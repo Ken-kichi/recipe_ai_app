@@ -9,4 +9,11 @@ wheels/
 # Virtual environments
 .venv
 .DS_Store
+.terraform
+.terraform.lock.hcl
+terraform.tfvars
+*.tfstate
+*.tfstate.backup
+*.tfvars.backup
+*.info
 
