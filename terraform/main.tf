@@ -76,8 +76,8 @@ resource "azurerm_container_app" "frontend" {
     container {
       name   = "frontendcontainerapp-${random_string.suffix.result}"
       image  = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
-      cpu    = 0.5
-      memory = "1Gi"
+     cpu    = 0.25
+      memory = "0.5Gi"
     }
   }
 }
@@ -96,9 +96,10 @@ resource "azurerm_container_app" "backend" {
     container {
       name   = "backendcontainerapp-${random_string.suffix.result}"
       image  = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
-      cpu    = 0.5
-      memory = "1Gi"
+     cpu    = 0.25
+      memory = "0.5Gi"
     }
+
   }
 }
 
@@ -195,7 +196,7 @@ resource "azurerm_postgresql_flexible_server" "postgresql" {
   administrator_login    = var.postgresql_login_name
   administrator_password = var.postgresql_password
   storage_mb             = 32768
-  sku_name               = "GP_Standard_D4s_v3"
+  sku_name               = "B_Standard_B1ms"
   zone                   = "1"
 
 }
