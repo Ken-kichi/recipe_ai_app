@@ -14,3 +14,4 @@ fake_users_db = {
         "disabled": True,
     },
 }
+
