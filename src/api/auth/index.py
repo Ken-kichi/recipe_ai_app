@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-from jose import jwt
 from src.db_models import User
 from src.get_conn import get_db
 from typing import Annotated
 from src.utils import create_access_token
 
 # トークンの発行
+
+router = APIRouter()
 
 
 @router.post("/token")
@@ -62,7 +62,10 @@ async def create_user(
             db.commit()
             db.refresh(new_user)
 
-            return {"message": "User created successfully", "user_id": new_user.id}
+            return {
+                "message": "User created successfully",
+                "user_id": new_user.id
+            }
     except Exception as e:
         db.rollback()
         raise HTTPException(
@@ -74,10 +77,3 @@ async def create_user(
 # ログイン
 # ログアウト
 # 自分の情報を取得
-
-
-@router.get("/users/me")
-async def read_users_me(
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
-    return current_user

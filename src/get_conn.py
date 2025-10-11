@@ -16,6 +16,7 @@ def get_connection_uri() -> str:
     db_password = urllib.parse.quote_plus(os.getenv("PGPASSWORD", ""))
     ssl_mode = os.getenv("PGSSLMODE", "require")
 
+    # @ignore
     return f"postgresql://{db_user}:{db_password}@{db_host}/{db_name}?sslmode={ssl_mode}"
 
 

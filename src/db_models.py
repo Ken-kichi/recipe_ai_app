@@ -6,10 +6,8 @@ from sqlalchemy.orm import relationship, declarative_base, Session
 from werkzeug.security import generate_password_hash, check_password_hash
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
-from src.models import User, UserInDB
-from typing import Annotated
-from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from fastapi import HTTPException
 
 Base = declarative_base()
 
@@ -43,7 +41,7 @@ class User(Base):
     # ユーザー名とパスワードで認証
     # ------------------------------
     @staticmethod
-    def get_user(db: Session,  user_name: str, password: str) -> User | None:
+    def get_user(db: Session,  user_name: str, password: str) -> "User" | None:
         user = db.query(User).filter(User.name == user_name).first()
         if user and user.check_password(password):
             return user
@@ -64,7 +62,10 @@ class User(Base):
             db.add(new_user)
             db.commit()
             db.refresh(new_user)
-            return {"message": "User created successfully", "user_id": new_user.id}
+            return {
+                "message": "User created successfully",
+                "user_id": new_user.id
+            }
         except Exception as e:
             db.rollback()
             raise HTTPException(
@@ -114,7 +115,8 @@ class User(Base):
     def current_subscription(self):
         active_subs = [
             sub for sub in self.subscriptions
-            if sub.status == "active" and (sub.end_date is None or sub.end_date > datetime.utcnow())
+            if sub.status == "active"
+            and (sub.end_date is None or sub.end_date > datetime.utcnow())
         ]
         return active_subs[0] if active_subs else None
 
@@ -156,12 +158,13 @@ class Recipe(Base):
 
     def calculate_nutrition(self, db: Session):
         """
-        Calculate the total nutrients from the ingredients included in the recipe and save them to the Nutrition table.
+        Calculate the total nutrients from the ingredients included
+        in the recipe
+        and save them to the Nutrition table.
         """
         total_calories = 0
         total_protein = 0
         total_fat = 0
-        total_carbs = 0
 
         for ri in self.recipe_ingredients:
             ingredient = ri.ingredient
@@ -193,7 +196,8 @@ class Recipe(Base):
         """
         llm = ChatOpenAI(model="gpt-5-mini", openai_api_key=openai_api_key)
         template = """
-        Please generate a description for the following dish within 80 characters: {title}
+        Please generate a description
+        for the following dish within 80 characters: {title}
         """
         prompt = PromptTemplate.from_template(
             template=template
@@ -244,9 +248,12 @@ class Step(Base):
 
     def short_instruction(self, length: int = 50):
         """
-        A method to shorten long procedure statements and display a preview.
+        A method to shorten long procedure statements
+        and display a preview.
         """
-        return (self.instruction[:length] + "...") if len(self.instruction) > length else self.instruction
+        return (
+            self.instruction[:length] + "...") \
+            if len(self.instruction) > length else self.instruction
 
     def __repr__(self):
         return f"<Step #{self.step_number}: {self.short_instruction(30)}>"
@@ -265,7 +272,10 @@ class Ingredient(Base):
 
     # Relationships
     recipe_ingredients = relationship(
-        "RecipeIngredient", back_populates="ingredient", cascade="all, delete-orphan")
+        "RecipeIngredient",
+        back_populates="ingredient",
+        cascade="all, delete-orphan"
+    )
 
     def to_dict(self):
         """
@@ -348,7 +358,10 @@ class RecipeIngredient(Base):
 
     def __repr__(self):
         ing_name = self.ingredient.name if self.ingredient else "Unknown"
-        return f"<RecipeIngredient(ingredient={ing_name}, qty={self.quantity}{self.ingredient.unit if self.ingredient else ''})>"
+        return f"""
+        <RecipeIngredient(ingredient={ing_name},
+        qty={self.quantity}{self.ingredient.unit if self.ingredient else ''})>
+        """
 
 
 class Image(Base):

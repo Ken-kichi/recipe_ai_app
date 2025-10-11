@@ -3,7 +3,8 @@ from src.database import fake_users_db
 from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from src.database import fake_users_db
+from datetime import datetime, timedelta
+import jwt
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/token")
 
