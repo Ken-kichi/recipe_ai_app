@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 # ------------------------------
@@ -7,18 +7,18 @@ from datetime import datetime
 
 
 class UserBase(BaseModel):
-    name: str
-    email: str
-    disabled: bool | None = None
+    name: str = Field(..., example="Alice")
+    email: str = Field(..., example="alice@example.com")
+    disabled: bool | None = Field(..., example="False")
 
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(..., example="hashed_pw_123")
 
 
 class UserRead(UserBase):
-    id: int
-    created_at: datetime
+    id: int = Field(..., example="1")
+    created_at: datetime = Field(..., example=datetime.utcnow())
 
     class Config:
         orm_mode = True
@@ -29,16 +29,16 @@ class UserRead(UserBase):
 
 
 class IngredientBase(BaseModel):
-    name: str
-    unit: str
-    calories: float | None = 0
-    protein: float | None = 0
-    fat: float | None = 0
-    carbohydrates: float | None = 0
+    name: str = Field(..., example="Tomato")
+    unit: str = Field(..., example="g")
+    calories: float | None = Field(18.0, example=18.0)
+    protein: float | None = Field(0.9, example=0.9)
+    fat: float | None = Field(0.2, example=0.2)
+    carbohydrates: float | None = Field(3.9, example=3.9)
 
 
 class IngredientRead(IngredientBase):
-    id: int
+    id: int = Field(..., example=1)
 
     class Config:
         orm_mode = True
@@ -49,14 +49,16 @@ class IngredientRead(IngredientBase):
 
 
 class RecipeIngredientBase(BaseModel):
-    ingredient_id: int
-    quantity: float
+    ingredient_id: int = Field(..., example=1)
+    quantity: float = Field(..., example=100.0)
 
 
 class RecipeIngredientRead(BaseModel):
-    id: int
-    quantity: float
-    ingredient: IngredientRead
+    id: int = Field(..., example=1)
+    quantity: float = Field(..., example=100.0)
+    ingredient: IngredientRead = Field(
+        ..., example={"id": 1, "name": "Tomato", "unit": "g", "calories": 18.0}
+    )
 
     class Config:
         orm_mode = True
@@ -67,15 +69,16 @@ class RecipeIngredientRead(BaseModel):
 
 
 class StepBase(BaseModel):
-    step_number: int
-    instruction: str
+    step_number: int = Field(..., example=1)
+    instruction: str = Field(..., example="Cut the tomato into small pieces.")
 
 
 class StepRead(StepBase):
-    id: int
+    id: int = Field(..., example=1)
 
     class Config:
         orm_mode = True
+
 
 # ------------------------------
 # Image Models
@@ -83,13 +86,13 @@ class StepRead(StepBase):
 
 
 class ImageBase(BaseModel):
-    image_url: str
-    is_regenerated: bool | None = False
+    image_url: str = Field(..., example="https://example.com/image1.jpg")
+    is_regenerated: bool | None = Field(False, example=False)
 
 
 class ImageRead(ImageBase):
-    id: int
-    created_at: datetime
+    id: int = Field(..., example=1)
+    created_at: datetime = Field(..., example="2025-10-11T12:34:56Z")
 
     class Config:
         orm_mode = True
@@ -100,16 +103,16 @@ class ImageRead(ImageBase):
 
 
 class NutritionBase(BaseModel):
-    calories: float | None = 0
-    protein: float | None = 0
-    fat: float | None = 0
-    carbohydrates: float | None = 0
-    fiber: float | None = 0
-    salt: float | None = 0
+    calories: float | None = Field(450.0, example=450.0)
+    protein: float | None = Field(25.0, example=25.0)
+    fat: float | None = Field(15.0, example=15.0)
+    carbohydrates: float | None = Field(55.0, example=55.0)
+    fiber: float | None = Field(5.0, example=5.0)
+    salt: float | None = Field(1.2, example=1.2)
 
 
 class NutritionRead(NutritionBase):
-    id: int
+    id: int = Field(..., example=1)
 
     class Config:
         orm_mode = True
@@ -120,18 +123,33 @@ class NutritionRead(NutritionBase):
 
 
 class RecipeBase(BaseModel):
-    title: str
-    markdown_content: str
-    nutrition_satisfied: bool | None = False
+    title: str = Field(..., example="Tomato Salad")
+    markdown_content: str = Field(...,
+                                  example="### How to make a simple tomato salad...")
+    nutrition_satisfied: bool | None = Field(False, example=True)
 
 
 class RecipeRead(RecipeBase):
-    id: int
-    created_at: datetime
-    steps: list[StepRead] = []
-    recipe_ingredients: list[RecipeIngredientRead] = []
-    images: list[ImageRead] = []
-    nutrition: NutritionRead | None = None
+    id: int = Field(..., example=1)
+    created_at: datetime = Field(..., example="2025-10-11T12:34:56Z")
+    steps: list[StepRead] = Field(
+        default_factory=list,
+        example=[{"id": 1, "step_number": 1, "instruction": "Cut tomatoes."}],
+    )
+    recipe_ingredients: list[RecipeIngredientRead] = Field(
+        default_factory=list,
+        example=[{"id": 1, "quantity": 100, "ingredient": {
+            "id": 1, "name": "Tomato", "unit": "g"}}],
+    )
+    images: list[ImageRead] = Field(
+        default_factory=list,
+        example=[{"id": 1, "image_url": "https://example.com/image1.jpg"}],
+    )
+    nutrition: NutritionRead | None = Field(
+        None,
+        example={"id": 1, "calories": 450, "protein": 25,
+                 "fat": 15, "carbohydrates": 55},
+    )
 
     class Config:
         orm_mode = True
@@ -142,14 +160,14 @@ class RecipeRead(RecipeBase):
 
 
 class StripePlanBase(BaseModel):
-    stripe_plan_id: str
-    name: str
-    price: float
-    interval: str
+    stripe_plan_id: str = Field(..., example="plan_12345")
+    name: str = Field(..., example="Pro Plan")
+    price: float = Field(..., example=9.99)
+    interval: str = Field(..., example="month")
 
 
 class StripePlanRead(StripePlanBase):
-    id: int
+    id: int = Field(..., example=1)
 
     class Config:
         orm_mode = True
@@ -160,15 +178,19 @@ class StripePlanRead(StripePlanBase):
 
 
 class SubscriptionBase(BaseModel):
-    stripe_plan_id: int
-    status: str
-    start_date: datetime
-    end_date: datetime | None = None
+    stripe_plan_id: int = Field(..., example=1)
+    status: str = Field(..., example="active")
+    start_date: datetime = Field(..., example="2025-10-01T00:00:00Z")
+    end_date: datetime | None = Field(None, example="2025-11-01T00:00:00Z")
 
 
 class SubscriptionRead(SubscriptionBase):
-    id: int
-    stripe_plan: StripePlanRead | None = None
+    id: int = Field(..., example=1)
+    stripe_plan: StripePlanRead | None = Field(
+        None,
+        example={"id": 1, "name": "Pro Plan",
+                 "price": 9.99, "interval": "month"},
+    )
 
     class Config:
         orm_mode = True

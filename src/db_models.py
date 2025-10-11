@@ -41,7 +41,7 @@ class User(Base):
     # ユーザー名とパスワードで認証
     # ------------------------------
     @staticmethod
-    def get_user(db: Session,  user_name: str, password: str) -> "User" | None:
+    def get_user(db: Session,  user_name: str, password: str):
         user = db.query(User).filter(User.name == user_name).first()
         if user and user.check_password(password):
             return user

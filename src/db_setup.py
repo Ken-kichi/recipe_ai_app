@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
+from werkzeug.security import generate_password_hash
 from get_conn import get_connection_uri
 from db_models import (
     Base,
@@ -47,7 +47,7 @@ plan_premium = StripePlan(
 user1 = User(
     name="Alice",
     email="alice@example.com",
-    password_hash="hashed_pw_123",
+    password_hash=generate_password_hash("hashed_pw_123"),
     disabled=False,
     created_at=datetime.utcnow(),
 )
@@ -55,7 +55,7 @@ user1 = User(
 user2 = User(
     name="Bob",
     email="bob@example.com",
-    password_hash="hashed_pw_456",
+    password_hash=generate_password_hash("hashed_pw_456"),
     disabled=False,
     created_at=datetime.utcnow(),
 )
