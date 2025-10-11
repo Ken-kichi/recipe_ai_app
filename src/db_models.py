@@ -6,8 +6,14 @@ from sqlalchemy.orm import relationship, declarative_base, Session
 from werkzeug.security import generate_password_hash, check_password_hash
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
+from src.models import User, UserInDB
+from typing import Annotated
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 
 Base = declarative_base()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/token")
 
 
 class User(Base):
@@ -26,20 +32,86 @@ class User(Base):
     subscriptions = relationship(
         "Subscription", back_populates="user", cascade="all, delete-orphan")
 
+    # ------------------------------
+    # 全ユーザー取得
+    # ------------------------------
+    @staticmethod
+    def get_users(db: Session):
+        return db.query(User).all()
+
+    # ------------------------------
+    # ユーザー名とパスワードで認証
+    # ------------------------------
+    @staticmethod
+    def get_user(db: Session,  user_name: str, password: str) -> User | None:
+        user = db.query(User).filter(User.name == user_name).first()
+        if user and user.check_password(password):
+            return user
+        return None
+
+    # ------------------------------
+    # 新規ユーザー作成
+    # ------------------------------
+    @staticmethod
+    def create_user(db: Session, form_data):
+        try:
+            new_user = User(
+                name=form_data.name,
+                email=form_data.email,  # username を email として利用
+                disabled=False
+            )
+            new_user.set_password(form_data.password)
+            db.add(new_user)
+            db.commit()
+            db.refresh(new_user)
+            return {"message": "User created successfully", "user_id": new_user.id}
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to create user: {e}"
+            )
+
+    # ------------------------------
+    # ユーザー削除
+    # ------------------------------
+    @staticmethod
+    def delete_user(db: Session, form_data):
+        try:
+            user = db.query(User).filter(User.email == form_data.email).first()
+            if user and user.check_password(form_data.password):
+                db.delete(user)
+                db.commit()
+                return {"message": "User deleted successfully"}
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail="User not found or incorrect password"
+                )
+
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to create user: {e}"
+            )
+
+    # ------------------------------
+    # パスワード設定・確認
+    # ------------------------------
     def set_password(self, password: str) -> None:
-        """Store the password as a hash"""
         self.password_hash = generate_password_hash(password)
 
-    def check_passowrd(self, password: str) -> bool:
-        """Verify the input password against the hash"""
+    def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
 
+    # ------------------------------
+    # その他ユーティリティ
+    # ------------------------------
     def is_active(self) -> bool:
-        """Whether the user is active"""
         return not self.disabled
 
     def current_subscription(self):
-        """Return currently active subscriptions (with expiration check)"""
         active_subs = [
             sub for sub in self.subscriptions
             if sub.status == "active" and (sub.end_date is None or sub.end_date > datetime.utcnow())
