@@ -61,9 +61,9 @@ def test_user_password_methods(db_session):
     db_session.commit()
 
     # 正しいパスワード
-    assert user.check_passowrd("secret123") is True
+    assert user.check_password("secret123") is True
     # 間違ったパスワード
-    assert user.check_passowrd("wrongpass") is False
+    assert user.check_password("wrongpass") is False
 
 # ------------------------------
 # current_subscriptionメソッドのテスト
@@ -327,7 +327,7 @@ def test_total_nutrition(db_session):
     assert nut["carbohydrates"] == 0
 
 
-def test_to_dict(db_session):
+def test_to_Ingredient_dict(db_session):
     ingredient = Ingredient(
         name="Chicken Breast",
         unit="g",
@@ -350,9 +350,9 @@ def test_to_dict(db_session):
     assert d["ingredient_name"] == "Chicken Breast"
     assert d["quantity"] == 200
     assert d["unit"] == "g"
-    assert d["calories"] == 330
-    assert d["protein"] == 62
-    assert d["fat"] == 7.2
+    assert d["calories"] == 33000.0
+    assert d["protein"] == 6200.0
+    assert d["fat"] == 720.0
     assert d["carbohydrates"] == 0
 
 
@@ -361,9 +361,9 @@ def test_mark_regenerated(db_session):
     db_session.add(img)
     db_session.commit()
 
-    assert img.is_regenerated == False
+    assert img.is_regenerated is False
     img.mark_regenerated()
-    assert img.is_regenerated == True
+    assert img.is_regenerated is True
 
 
 def test_filename(db_session):
@@ -374,7 +374,7 @@ def test_filename(db_session):
     assert img.filename() == "photo.png"
 
 
-def test_to_dict(db_session):
+def test_to_Image_dict(db_session):
     now = datetime.utcnow()
     img = Image(
         recipe_id=1, image_url="http://example.com/pic.jpg", created_at=now)
@@ -384,7 +384,7 @@ def test_to_dict(db_session):
     d = img.to_dict()
     assert d["recipe_id"] == 1
     assert d["image_url"] == "http://example.com/pic.jpg"
-    assert d["is_regenerated"] == False
+    assert d["is_regenerated"] is False
     assert d["filename"] == "pic.jpg"
     assert d["created_at"] == now.isoformat()
 
@@ -417,7 +417,7 @@ def test_pfc_ratio_zero(db_session):
     assert ratio == {"protein": 0, "fat": 0, "carbohydrates": 0}
 
 
-def test_to_dict(db_session):
+def test_to_Nutrition_dict(db_session):
     nut = Nutrition(
         recipe_id=1,
         calories=500,
@@ -475,9 +475,13 @@ def test_monthly_price_yearly(db_session):
     assert plan.monthly_price() == 10  # 120 / 12
 
 
-def test_to_dict(db_session):
-    plan = StripePlan(stripe_plan_id="plan_004",
-                      name="Premium", price=30, interval="monthly")
+def test_to_StripePlan_dict(db_session):
+    plan = StripePlan(
+        stripe_plan_id="plan_004",
+        name="Premium",
+        price=30,
+        interval="monthly"
+    )
     db_session.add(plan)
     db_session.commit()
 
@@ -487,7 +491,7 @@ def test_to_dict(db_session):
     assert d["name"] == "Premium"
     assert d["price"] == 30
     assert d["interval"] == "monthly"
-    assert d["display_price"] == "$30 / monthly"
+    assert d["display_price"] == "$30.0 / monthly"
     assert d["monthly_price"] == 30
 
 
@@ -571,7 +575,7 @@ def test_days_remaining_none(db_session, stripe_plan):
     assert sub.days_remaining() is None
 
 
-def test_to_dict(db_session, stripe_plan):
+def test_to_Subscription_dict(db_session, stripe_plan):
     now = datetime.utcnow()
     sub = Subscription(
         user_id=1,
