@@ -1,32 +1,173 @@
-from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
-from get_conn import get_connection_uri
-from db_models import Base, Inventory
+from datetime import datetime
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-# 接続文字列を取得
+from get_conn import get_connection_uri
+from db_models import (
+    Base,
+    User,
+    Recipe,
+    Step,
+    Ingredient,
+    RecipeIngredient,
+    Image,
+    Nutrition,
+    Subscription,
+    StripePlan,
+)
+
 conn_string = get_connection_uri()
 
-# エンジンとセッション作成
-engine = create_engine(conn_string)
+engine = create_engine(conn_string, echo=True)
 SessionLocal = sessionmaker(bind=engine)
 session = SessionLocal()
 
-# テーブル作成（存在する場合は削除して再作成）
-Base.metadata.drop_all(bind=engine)  # ← DROP TABLE
-Base.metadata.create_all(bind=engine)  # ← CREATE TABLE
-print("Finished creating table")
+Base.metadata.drop_all(bind=engine)
+Base.metadata.create_all(bind=engine)
+print("Finished creating tables")
 
-# データ挿入
-items = [
-    Inventory(name="banana", quantity=150),
-    Inventory(name="orange", quantity=154),
-    Inventory(name="apple", quantity=100),
-]
-session.add_all(items)
+
+# -------------------------------
+# create dummy data
+# -------------------------------
+
+plan_basic = StripePlan(
+    stripe_plan_id="plan_basic_001",
+    name="Basic Plan",
+    price=980.0,
+    interval="month"
+)
+plan_premium = StripePlan(
+    stripe_plan_id="plan_premium_001",
+    name="Premium Plan",
+    price=1980.0,
+    interval="month"
+)
+
+user1 = User(
+    name="Alice",
+    email="alice@example.com",
+    password_hash="hashed_pw_123",
+    disabled=False,
+    created_at=datetime.utcnow(),
+)
+
+user2 = User(
+    name="Bob",
+    email="bob@example.com",
+    password_hash="hashed_pw_456",
+    disabled=False,
+    created_at=datetime.utcnow(),
+)
+
+sub1 = Subscription(
+    user=user1,
+    stripe_plan=plan_basic,
+    status="active",
+    start_date=datetime(2025, 1, 1),
+    end_date=None,
+)
+
+sub2 = Subscription(
+    user=user2,
+    stripe_plan=plan_premium,
+    status="canceled",
+    start_date=datetime(2025, 1, 1),
+    end_date=datetime(2025, 6, 1),
+)
+
+recipe1 = Recipe(
+    user=user1,
+    title="Healthy Chicken Salad",
+    markdown_content="### Ingredients\n- Chicken\n- Lettuce\n- Olive oil",
+    nutrition_satisfied=True,
+    created_at=datetime.utcnow(),
+)
+
+step1 = Step(
+    recipe=recipe1,
+    step_number=1,
+    instruction="Grill the chicken."
+)
+step2 = Step(
+    recipe=recipe1,
+    step_number=2,
+    instruction="Mix with lettuce and olive oil."
+)
+
+ingredient1 = Ingredient(
+    name="Chicken Breast",
+    unit="g",
+    calories=165,
+    protein=31,
+    fat=3.6,
+    carbohydrates=0
+)
+
+ingredient2 = Ingredient(
+    name="Lettuce",
+    unit="g",
+    calories=15,
+    protein=1.4,
+    fat=0.2,
+    carbohydrates=2.9,
+)
+
+ri1 = RecipeIngredient(
+    recipe=recipe1,
+    ingredient=ingredient1,
+    quantity=150
+)
+ri2 = RecipeIngredient(
+    recipe=recipe1,
+    ingredient=ingredient2,
+    quantity=50
+)
+
+nutrition1 = Nutrition(
+    recipe=recipe1,
+    calories=300,
+    protein=40,
+    fat=10,
+    carbohydrates=5,
+    fiber=2,
+    salt=1.2,
+)
+
+image1 = Image(
+    recipe=recipe1,
+    image_url="https://example.com/chicken_salad.jpg",
+    is_regenerated=False,
+    created_at=datetime.utcnow(),
+)
+
+# -------------------------------
+# input data
+# -------------------------------
+
+session.add_all(
+    [
+        plan_basic,
+        plan_premium,
+        user1,
+        user2,
+        sub1,
+        sub2,
+        recipe1,
+        step1,
+        step2,
+        ingredient1,
+        ingredient2,
+        ri1,
+        ri2,
+        nutrition1,
+        image1,
+    ]
+)
+
 session.commit()
-print("Inserted 3 rows of data")
+print("Inserted dummy data successfully")
 
-# クリーンアップ
-session.close()
-engine.dispose()
-print("Connection closed")
+# session.close()
+# engine.dispose()
+# print("Connection closed")
