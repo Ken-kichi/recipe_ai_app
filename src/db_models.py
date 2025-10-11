@@ -28,7 +28,7 @@ class User(Base):
 
     def set_password(self, password: str) -> None:
         """Store the password as a hash"""
-        self.password_hash = generated_password_hash(password)
+        self.password_hash = generate_password_hash(password)
 
     def check_passowrd(self, password: str) -> bool:
         """Verify the input password against the hash"""
@@ -97,22 +97,19 @@ class Recipe(Base):
             total_calories += ingredient.calories*quantity/100
             total_protein += ingredient.protein*quantity/100
             total_fat += ingredient.fat*quantity/100
-            total_carbs += ingredient.carbs*quantity/100
 
         if self.nutrition is None:
-            from modelsf import Nutrition
+            from src.db_models import Nutrition
             self.nutrition = Nutrition(
                 recipe_id=self.id,
                 calories=total_calories,
                 protein=total_protein,
-                fat=total_fat,
-                carbs=total_carbs
+                fat=total_fat
             )
         else:
             self.nutrition.calories = total_calories
             self.nutrition.protein = total_protein
             self.nutrition.fat = total_fat
-            self.nutrition.carbs = total_carbs
 
         db.add(self)
         db.commit()
@@ -122,7 +119,7 @@ class Recipe(Base):
         """
         Generate descriptions for recipes using AI based on their titles.
         """
-        llm = ChatOpenAI(model="gpt-5-mini", openai_api_key: str):
+        llm = ChatOpenAI(model="gpt-5-mini", openai_api_key=openai_api_key)
         template = """
         Please generate a description for the following dish within 80 characters: {title}
         """
@@ -145,8 +142,7 @@ class Recipe(Base):
         return (
             1800 <= self.nutrition.calories <= 2200 and
             50 <= self.nutrition.protein <= 70 and
-            40 <= self.nutrition.fat <= 70 and
-            200 <= self.nutrition.carbs <= 300
+            40 <= self.nutrition.fat <= 70
         )
 
 
@@ -244,8 +240,7 @@ class RecipeIngredient(Base):
     ingredient = relationship(
         "Ingredient", back_populates="recipe_ingredients")
 
-
-def total_nutrition(self):
+    def total_nutrition(self):
         """
         Calculate the total nutritional value within the recipe based on the amount of this ingredient used.
         Calculated as: Nutritional value of the Ingredient model × quantity.
@@ -325,6 +320,7 @@ class Image(Base):
     def __repr__(self):
         return f"<Image(id={self.id}, url={self.image_url}, regenerated={self.is_regenerated})>"
 
+
 class Nutrition(Base):
     __tablename__ = "nutritions"
 
@@ -398,11 +394,11 @@ class StripePlan(Base):
     subscriptions = relationship(
         "Subscription", back_populates="stripe_plan", cascade="all, delete-orphan")
 
-     def display_price(self):
+    def display_price(self):
         """
-        Return the price and billing interval as a string.
-        Example: “$10 / month”
-        """
+            Return the price and billing interval as a string.
+            Example: “$10 / month”
+            """
         return f"${self.price} / {self.interval}"
 
     def monthly_price(self):
@@ -430,6 +426,7 @@ class StripePlan(Base):
 
     def __repr__(self):
         return f"<StripePlan(name={self.name}, price={self.price}, interval={self.interval})>"
+
 
 class Subscription(Base):
     __tablename__ = "subscriptions"

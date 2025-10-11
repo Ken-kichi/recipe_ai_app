@@ -128,9 +128,9 @@ class RecipeBase(BaseModel):
 class RecipeRead(RecipeBase):
     id: int
     created_at: datetime
-    steps: List[StepRead] = []
-    recipe_ingredients: List[RecipeIngredientRead] = []
-    images: List[ImageRead] = []
+    steps: list[StepRead] = []
+    recipe_ingredients: list[RecipeIngredientRead] = []
+    images: list[ImageRead] = []
     nutrition: NutritionRead | None = None
 
     class Config:
