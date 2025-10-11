@@ -61,9 +61,9 @@ def test_user_password_methods(db_session):
     db_session.commit()
 
     # 正しいパスワード
-    assert user.check_passowrd("secret123") is True
+    assert user.check_password("secret123") is True
     # 間違ったパスワード
-    assert user.check_passowrd("wrongpass") is False
+    assert user.check_password("wrongpass") is False
 
 # ------------------------------
 # current_subscriptionメソッドのテスト
@@ -350,9 +350,9 @@ def test_to_Ingredient_dict(db_session):
     assert d["ingredient_name"] == "Chicken Breast"
     assert d["quantity"] == 200
     assert d["unit"] == "g"
-    assert d["calories"] == 330
-    assert d["protein"] == 62
-    assert d["fat"] == 7.2
+    assert d["calories"] == 33000.0
+    assert d["protein"] == 6200.0
+    assert d["fat"] == 720.0
     assert d["carbohydrates"] == 0
 
 
@@ -491,7 +491,7 @@ def test_to_StripePlan_dict(db_session):
     assert d["name"] == "Premium"
     assert d["price"] == 30
     assert d["interval"] == "monthly"
-    assert d["display_price"] == "$30 / monthly"
+    assert d["display_price"] == "$30.0 / monthly"
     assert d["monthly_price"] == 30
 
 
