@@ -2,6 +2,30 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 # ------------------------------
+# Login Models
+# ------------------------------
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(..., example="alice@example.com")
+    password: str = Field(..., example="hashed_pw_123")
+
+
+class TokenResponse(BaseModel):
+    access_token: str = Field(...,
+                              example="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
+    token_type: str = Field(default="bearer")
+
+# ------------------------------
+# Logout Models
+# ------------------------------
+
+
+class LogoutResponse(BaseModel):
+    message: str = Field(..., example="User logged out successfully")
+
+
+# ------------------------------
 # User Models
 # ------------------------------
 
@@ -22,6 +46,11 @@ class UserRead(UserBase):
 
     class Config:
         orm_mode = True
+
+
+class UserResponse(BaseModel):
+    message: str = Field(..., example="User created successfully")
+    user_id: int = Field(..., example="1")
 
 # ------------------------------
 # Ingredient Models

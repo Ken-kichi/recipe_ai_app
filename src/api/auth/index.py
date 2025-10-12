@@ -7,19 +7,15 @@ from src.db_models import User
 from src.get_conn import get_db
 from typing import Annotated
 from src.utils import create_access_token, verify_access_token
-from src.api_models import UserCreate
-
-# トークンの発行
+from src.api_models import UserCreate, LoginRequest, TokenResponse, LogoutResponse, UserResponse
 
 router = APIRouter()
-
-
 app = FastAPI()
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/token")
 
 
-@router.post("/token")
+@router.post("/token", response_model=TokenResponse)
+# トークンの発行
 async def get_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Session = Depends(get_db),
@@ -43,7 +39,8 @@ async def get_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/create-user")
+@router.post("/create-user", response_model=UserResponse)
+# ユーザー登録
 async def create_user(
     token: str = Depends(oauth2_scheme),
     form_data: UserCreate = None,
@@ -84,6 +81,22 @@ async def create_user(
         )
 
 
-# # ログイン
-# # ログアウト
-# # 自分の情報を取得
+@router.post("/login", response_model=TokenResponse)
+# ログイン
+async def login(request: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == request.email).first()
+    if not user or not user.check_password(request.password):
+        raise HTTPException(
+            status_code=401, detail="Invalid email or password")
+    if user.disabled:
+        raise HTTPException(status_code=403, detail="User account is disabled")
+
+    access_token = create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+# ログアウト
+@router.post("/logout", response_model=LogoutResponse)
+async def logout(token: str = Depends(oauth2_scheme)):
+    return {"message": "User logged out successfully"}
+# 自分の情報を取得
