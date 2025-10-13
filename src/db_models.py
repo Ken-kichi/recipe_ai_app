@@ -38,12 +38,12 @@ class User(Base):
         return db.query(User).all()
 
     # ------------------------------
-    # ユーザー名とパスワードで認証
+    # ユーザー取得
     # ------------------------------
     @staticmethod
-    def get_user(db: Session,  user_name: str, password: str):
-        user = db.query(User).filter(User.name == user_name).first()
-        if user and user.check_password(password):
+    def get_user(db: Session,  email: str):
+        user = db.query(User).filter(User.email == email).first()
+        if user:
             return user
         return None
 
@@ -52,26 +52,20 @@ class User(Base):
     # ------------------------------
     @staticmethod
     def create_user(db: Session, form_data):
-        try:
-            new_user = User(
-                name=form_data.name,
-                email=form_data.email,  # username を email として利用
-                disabled=False
-            )
-            new_user.set_password(form_data.password)
-            db.add(new_user)
-            db.commit()
-            db.refresh(new_user)
-            return {
-                "message": "User created successfully",
-                "user_id": new_user.id
-            }
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to create user: {e}"
-            )
+        new_user = User(
+            name=form_data.name,
+            email=form_data.email,  # username を email として利用
+            disabled=False
+        )
+        new_user.set_password(form_data.password)
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return {
+            "message": "User created successfully",
+            "user_id": new_user.id
+        }
+
 
     # ------------------------------
     # ユーザー削除

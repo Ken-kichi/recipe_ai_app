@@ -7,7 +7,7 @@ from src.db_models import User
 from src.get_conn import get_db
 from typing import Annotated
 from src.utils import create_access_token, verify_access_token
-from src.api_models import UserCreate, LoginRequest, TokenResponse, LogoutResponse, UserResponse
+from src.api_models import UserCreate, LoginRequest, TokenResponse, LogoutResponse, UserResponse, UserRead
 
 router = APIRouter()
 app = FastAPI()
@@ -59,20 +59,10 @@ async def create_user(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User already exists",
             )
-        new_user = User(
-            name=form_data.name,
-            email=form_data.email,
-            disabled=False
-        )
-        new_user.set_password(form_data.password)
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
 
-        return {
-            "message": "User created successfully",
-            "user_id": new_user.id
-        }
+        result = User.create_user(db=db, form_data=form_data)
+
+        return result
     except Exception as e:
         db.rollback()
         raise HTTPException(
@@ -95,8 +85,29 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-# ログアウト
 @router.post("/logout", response_model=LogoutResponse)
+# ログアウト
 async def logout(token: str = Depends(oauth2_scheme)):
     return {"message": "User logged out successfully"}
+
+
+@router.get("/user", response_model=UserRead)
 # 自分の情報を取得
+async def get_user_info(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    payload = verify_access_token(token)
+
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    email = payload.get("sub")
+    user = User.get_user(db=db, email=email)
+    if not user:
+        raise HTTPException(
+            status_code=401, detail="User not found"
+        )
+    if user.disabled:
+        raise HTTPException(status_code=403, detail="User account is disabled")
+    return user
