@@ -195,7 +195,7 @@ resource "azurerm_postgresql_flexible_server" "postgresql" {
   version                = "12"
   administrator_login    = var.postgresql_login_name
   administrator_password = var.postgresql_password
-  storage_mb             = 32768
+  storage_mb             = 5120
   sku_name               = "B_Standard_B1ms"
   zone                   = "1"
 
