@@ -1,13 +1,12 @@
-from fastapi.security import OAuth2PasswordBearer
-from fastapi import Depends, FastAPI
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from src.db_models import User
 from src.get_conn import get_db
 from typing import Annotated
 from src.utils import create_access_token, verify_access_token
 from src.api_models import UserCreate, LoginRequest, TokenResponse, LogoutResponse, UserResponse, UserRead
+from jose import JWTError
 
 router = APIRouter()
 app = FastAPI()
@@ -81,8 +80,14 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
     if user.disabled:
         raise HTTPException(status_code=403, detail="User account is disabled")
 
-    access_token = create_access_token(data={"sub": user.email})
-    return {"access_token": access_token, "token_type": "bearer"}
+    try:
+        access_token = create_access_token(data={"sub": user.email})
+        return {"access_token": access_token, "token_type": "bearer"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate access token: {str(e)}"
+        )
 
 
 @router.post("/logout", response_model=LogoutResponse)
@@ -97,17 +102,26 @@ async def get_user_info(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    payload = verify_access_token(token)
+    try:
+        payload = verify_access_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid token")
 
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        email = payload.get("sub")
+        user = User.get_user(db=db, email=email)
 
-    email = payload.get("sub")
-    user = User.get_user(db=db, email=email)
-    if not user:
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        if user.disabled:
+            raise HTTPException(
+                status_code=403, detail="User account is disabled")
+
+        return user
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    except Exception as e:
         raise HTTPException(
-            status_code=401, detail="User not found"
+            status_code=500,
+            detail=f"Failed to get user information: {str(e)}"
         )
-    if user.disabled:
-        raise HTTPException(status_code=403, detail="User account is disabled")
-    return user

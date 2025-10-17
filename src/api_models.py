@@ -52,62 +52,6 @@ class UserResponse(BaseModel):
     message: str = Field(..., example="User created successfully")
     user_id: int = Field(..., example="1")
 
-# ------------------------------
-# Ingredient Models
-# ------------------------------
-
-
-class IngredientBase(BaseModel):
-    name: str = Field(..., example="Tomato")
-    unit: str = Field(..., example="g")
-    calories: float | None = Field(18.0, example=18.0)
-    protein: float | None = Field(0.9, example=0.9)
-    fat: float | None = Field(0.2, example=0.2)
-    carbohydrates: float | None = Field(3.9, example=3.9)
-
-
-class IngredientRead(IngredientBase):
-    id: int = Field(..., example=1)
-
-    class Config:
-        orm_mode = True
-
-# ------------------------------
-# RecipeIngredient Models
-# ------------------------------
-
-
-class RecipeIngredientBase(BaseModel):
-    ingredient_id: int = Field(..., example=1)
-    quantity: float = Field(..., example=100.0)
-
-
-class RecipeIngredientRead(BaseModel):
-    id: int = Field(..., example=1)
-    quantity: float = Field(..., example=100.0)
-    ingredient: IngredientRead = Field(
-        ..., example={"id": 1, "name": "Tomato", "unit": "g", "calories": 18.0}
-    )
-
-    class Config:
-        orm_mode = True
-
-# ------------------------------
-# Step Models
-# ------------------------------
-
-
-class StepBase(BaseModel):
-    step_number: int = Field(..., example=1)
-    instruction: str = Field(..., example="Cut the tomato into small pieces.")
-
-
-class StepRead(StepBase):
-    id: int = Field(..., example=1)
-
-    class Config:
-        orm_mode = True
-
 
 # ------------------------------
 # Image Models
@@ -125,59 +69,29 @@ class ImageRead(ImageBase):
 
     class Config:
         orm_mode = True
-
-# ------------------------------
-# Nutrition Models
-# ------------------------------
-
-
-class NutritionBase(BaseModel):
-    calories: float | None = Field(450.0, example=450.0)
-    protein: float | None = Field(25.0, example=25.0)
-    fat: float | None = Field(15.0, example=15.0)
-    carbohydrates: float | None = Field(55.0, example=55.0)
-    fiber: float | None = Field(5.0, example=5.0)
-    salt: float | None = Field(1.2, example=1.2)
-
-
-class NutritionRead(NutritionBase):
-    id: int = Field(..., example=1)
-
-    class Config:
-        orm_mode = True
-
 # ------------------------------
 # Recipe Models
 # ------------------------------
 
 
+class RecipeResponse(BaseModel):
+    message: str = Field(..., example="Recipe created successfully")
+    recipe_id: int = Field(..., example="1")
+
+
 class RecipeBase(BaseModel):
     title: str = Field(..., example="Tomato Salad")
-    markdown_content: str = Field(...,
-                                  example="### How to make a simple tomato salad...")
-    nutrition_satisfied: bool | None = Field(False, example=True)
 
 
 class RecipeRead(RecipeBase):
     id: int = Field(..., example=1)
+    markdown_content: str = Field(...,
+                                  example="### How to make a simple tomato salad...")
+    user: str = Field(..., example="Alice")
     created_at: datetime = Field(..., example="2025-10-11T12:34:56Z")
-    steps: list[StepRead] = Field(
-        default_factory=list,
-        example=[{"id": 1, "step_number": 1, "instruction": "Cut tomatoes."}],
-    )
-    recipe_ingredients: list[RecipeIngredientRead] = Field(
-        default_factory=list,
-        example=[{"id": 1, "quantity": 100, "ingredient": {
-            "id": 1, "name": "Tomato", "unit": "g"}}],
-    )
     images: list[ImageRead] = Field(
         default_factory=list,
         example=[{"id": 1, "image_url": "https://example.com/image1.jpg"}],
-    )
-    nutrition: NutritionRead | None = Field(
-        None,
-        example={"id": 1, "calories": 450, "protein": 25,
-                 "fat": 15, "carbohydrates": 55},
     )
 
     class Config:

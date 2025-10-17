@@ -1,8 +1,8 @@
 import os
-import urllib.parse
+# import urllib.parse
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
 # # .env をロード
 # load_dotenv()

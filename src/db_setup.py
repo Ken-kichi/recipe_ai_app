@@ -7,11 +7,7 @@ from db_models import (
     Base,
     User,
     Recipe,
-    Step,
-    Ingredient,
-    RecipeIngredient,
     Image,
-    Nutrition,
     Subscription,
     StripePlan,
 )
@@ -80,59 +76,9 @@ recipe1 = Recipe(
     user=user1,
     title="Healthy Chicken Salad",
     markdown_content="### Ingredients\n- Chicken\n- Lettuce\n- Olive oil",
-    nutrition_satisfied=True,
     created_at=datetime.utcnow(),
 )
 
-step1 = Step(
-    recipe=recipe1,
-    step_number=1,
-    instruction="Grill the chicken."
-)
-step2 = Step(
-    recipe=recipe1,
-    step_number=2,
-    instruction="Mix with lettuce and olive oil."
-)
-
-ingredient1 = Ingredient(
-    name="Chicken Breast",
-    unit="g",
-    calories=165,
-    protein=31,
-    fat=3.6,
-    carbohydrates=0
-)
-
-ingredient2 = Ingredient(
-    name="Lettuce",
-    unit="g",
-    calories=15,
-    protein=1.4,
-    fat=0.2,
-    carbohydrates=2.9,
-)
-
-ri1 = RecipeIngredient(
-    recipe=recipe1,
-    ingredient=ingredient1,
-    quantity=150
-)
-ri2 = RecipeIngredient(
-    recipe=recipe1,
-    ingredient=ingredient2,
-    quantity=50
-)
-
-nutrition1 = Nutrition(
-    recipe=recipe1,
-    calories=300,
-    protein=40,
-    fat=10,
-    carbohydrates=5,
-    fiber=2,
-    salt=1.2,
-)
 
 image1 = Image(
     recipe=recipe1,
@@ -154,13 +100,6 @@ session.add_all(
         sub1,
         sub2,
         recipe1,
-        step1,
-        step2,
-        ingredient1,
-        ingredient2,
-        ri1,
-        ri2,
-        nutrition1,
         image1,
     ]
 )
