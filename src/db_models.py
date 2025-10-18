@@ -270,6 +270,7 @@ class Recipe(Base):
             ]
         }
 
+    # レシピ詳細
     @staticmethod
     def get_recipe_by_recipe_id(db: Session, recipe_id: int) -> dict:
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
@@ -295,7 +296,21 @@ class Recipe(Base):
             "recipe_id": recipe.id,
             "title": recipe.title
         }
+
     # レシピ削除
+    @staticmethod
+    def delete_recipe(db: Session, recipe_id: int) -> dict:
+        recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+        if not recipe:
+            return None
+
+        db.delete(recipe)
+        db.commit()
+        return {
+            "message": "Recipe deleted successfully",
+            "recipe_id": recipe.id,
+            "title": recipe.title
+        }
 
 
 class Image(Base):
