@@ -186,3 +186,50 @@ async def update_recipe(
         )
 
 # レシピ削除
+
+
+@router.delete("/recipe/{recipe_id}", response_model=RecipeResponse)
+async def delete_recipe(
+    recipe_id: int,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    try:
+        payload = verify_access_token(token)
+
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        email = payload.get("sub")
+        user = User.get_user(db=db, email=email)
+        if not user:
+            raise HTTPException(
+                status_code=401, detail="User not found"
+            )
+        if user.disabled:
+            raise HTTPException(
+                status_code=403, detail="User account is disabled")
+
+        recipe_obj = Recipe.get_recipe_by_recipe_id(db=db, recipe_id=recipe_id)
+        if not recipe_obj:
+            raise HTTPException(status_code=404, detail="Recipe not found")
+
+        if recipe_obj.user_id != user.id:
+            raise HTTPException(
+                status_code=403, detail="Not authorized to delete this recipe"
+            )
+
+        Recipe.delete_recipe(db=db, recipe_id=recipe_id)
+
+        return {
+            "message": "Recipe deleted successfully",
+            "recipe_id": recipe_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete Recipe: {str(e)}"
+        )
