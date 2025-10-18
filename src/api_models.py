@@ -79,6 +79,16 @@ class RecipeResponse(BaseModel):
     recipe_id: int = Field(..., example="1")
 
 
+class ImageInfo(BaseModel):
+    id: int
+    image_url: str
+    is_regenerated: bool
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
 class RecipeBase(BaseModel):
     title: str = Field(..., example="Tomato Salad")
 
