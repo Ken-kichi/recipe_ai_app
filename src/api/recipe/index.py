@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from src.db_models import User, Image, Recipe
 from src.get_conn import get_db
 from src.utils import verify_access_token
-from src.api_models import RecipeResponse, RecipeRead
+from src.api_models import RecipeResponse, RecipeRead, EditedRecipe
 
 router = APIRouter()
 app = FastAPI()
@@ -83,8 +83,7 @@ async def get_user_recipes(
                 status_code=403, detail="User account is disabled")
 
         recipes = Recipe.get_recipes_by_user(user_id=user.id, db=db)
-        # Recipe.get_recipes_by_user returns a list of dicts already
-        # so return it directly to avoid attribute access on dicts
+
         return recipes
 
     except HTTPException:
@@ -123,7 +122,6 @@ async def get_recipe(
         if not recipe:
             raise HTTPException(status_code=404, detail="Recipe not found")
 
-        # Build a dict matching RecipeRead fields to avoid Pydantic validation errors
         return recipe
 
     except HTTPException:
@@ -134,5 +132,57 @@ async def get_recipe(
             detail=f"Failed to retrieve recipe: {str(e)}"
         )
 
+
+@router.put("/recipe/{recipe_id}", response_model=RecipeResponse)
 # レシピ編集
+async def update_recipe(
+    recipe_id: int,
+    form_data: EditedRecipe,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    try:
+        payload = verify_access_token(token)
+
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        email = payload.get("sub")
+        user = User.get_user(db=db, email=email)
+        if not user:
+            raise HTTPException(
+                status_code=401, detail="User not found"
+            )
+        if user.disabled:
+            raise HTTPException(
+                status_code=403, detail="User account is disabled")
+
+        recipe_obj = Recipe.get_recipe_by_recipe_id(db=db, recipe_id=recipe_id)
+        if not recipe_obj:
+            raise HTTPException(status_code=404, detail="Recipe not found")
+
+        if recipe_obj.user_id != user.id:
+            raise HTTPException(
+                status_code=403, detail="Not authorized to update this recipe"
+            )
+
+        Recipe.update_recipe(
+            db=db,
+            recipe_id=recipe_id,
+            form_data=form_data,
+        )
+
+        return {
+            "message": "Recipe updated successfully",
+            "recipe_id": recipe_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update Recipe: {str(e)}"
+        )
+
 # レシピ削除
