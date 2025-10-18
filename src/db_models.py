@@ -244,7 +244,32 @@ class Recipe(Base):
             }
             for recipe in recipes
         ]
+
     # レシピ詳細
+    @staticmethod
+    def get_recipe_by_id(db: Session, recipe_id: int) -> dict:
+        recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+        if not recipe:
+            return None
+        return {
+            "id": recipe.id,
+            "title": recipe.title,
+            # pydantic model expects `markdown_content` field name
+            "markdown_content": recipe.markdown_content,
+            # include owner's name for `user` field expected by RecipeRead
+            "user": recipe.user.name if recipe.user else None,
+            "created_at": recipe.created_at.isoformat() if recipe.created_at else None,
+            "images": [
+                {
+                    "id": image.id,
+                    "image_url": image.image_url,
+                    "is_regenerated": image.is_regenerated,
+                    "created_at": image.created_at.isoformat() if image.created_at else None,
+                }
+                for image in recipe.images
+            ]
+        }
+
     # レシピ編集
     # レシピ削除
 

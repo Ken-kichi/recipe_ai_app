@@ -61,6 +61,7 @@ async def create_recipe(
 
 
 @router.get("/user-recipes", response_model=list[RecipeRead])
+# ログインユーザーのレシピ一覧
 async def get_user_recipes(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
@@ -93,7 +94,45 @@ async def get_user_recipes(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve recipes: {str(e)}"
         )
-# ログインユーザーのレシピ一覧
-# レシピ詳細
+
+
+@router.get("/recipe/{recipe_id}", response_model=RecipeRead)
+async def get_recipe(
+    recipe_id: int,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    # レシピ詳細
+    try:
+        payload = verify_access_token(token)
+
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        email = payload.get("sub")
+        user = User.get_user(db=db, email=email)
+        if not user:
+            raise HTTPException(
+                status_code=401, detail="User not found"
+            )
+        if user.disabled:
+            raise HTTPException(
+                status_code=403, detail="User account is disabled")
+
+        recipe = Recipe.get_recipe_by_id(recipe_id=recipe_id, db=db)
+        if not recipe:
+            raise HTTPException(status_code=404, detail="Recipe not found")
+
+        # Build a dict matching RecipeRead fields to avoid Pydantic validation errors
+        return recipe
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve recipe: {str(e)}"
+        )
+
 # レシピ編集
 # レシピ削除
