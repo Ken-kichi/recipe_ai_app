@@ -270,7 +270,31 @@ class Recipe(Base):
             ]
         }
 
+    @staticmethod
+    def get_recipe_by_recipe_id(db: Session, recipe_id: int) -> dict:
+        recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+        if not recipe:
+            return None
+        return recipe
+
     # レシピ編集
+    @staticmethod
+    def update_recipe(db: Session, recipe_id: int, form_data) -> dict:
+        recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+        if not recipe:
+            return None
+
+        if getattr(form_data, "title", None) is not None:
+            recipe.title = form_data.title
+        if getattr(form_data, "markdown_content", None) is not None:
+            recipe.markdown_content = form_data.markdown_content
+        db.commit()
+        db.refresh(recipe)
+        return {
+            "message": "Recipe updated successfully",
+            "recipe_id": recipe.id,
+            "title": recipe.title
+        }
     # レシピ削除
 
 

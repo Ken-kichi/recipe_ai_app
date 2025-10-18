@@ -69,6 +69,16 @@ class ImageRead(ImageBase):
 
     class Config:
         orm_mode = True
+
+
+class ImageEdit(BaseModel):
+    id: int | None = Field(None, example=1)
+    image_url: str = Field(..., example="https://example.com/image1.jpg")
+    is_regenerated: bool | None = Field(None, example=False)
+    created_at: datetime | None = Field(None, example="2025-10-11T12:34:56Z")
+
+    class Config:
+        orm_mode = True
 # ------------------------------
 # Recipe Models
 # ------------------------------
@@ -101,6 +111,21 @@ class RecipeRead(RecipeBase):
     created_at: datetime = Field(..., example="2025-10-11T12:34:56Z")
     images: list[ImageRead] = Field(
         default_factory=list,
+        example=[{"id": 1, "image_url": "https://example.com/image1.jpg"}],
+    )
+
+    class Config:
+        orm_mode = True
+
+
+class EditedRecipe(BaseModel):
+    title: str | None = Field(None, example="Tomato Salad")
+    markdown_content: str | None = Field(
+        None, example="### Updated recipe content..."
+    )
+    # user should not be provided when editing; remove strict requirement
+    images: list[ImageEdit] | None = Field(
+        None,
         example=[{"id": 1, "image_url": "https://example.com/image1.jpg"}],
     )
 
