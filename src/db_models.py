@@ -399,8 +399,6 @@ class Subscription(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey(
         "users.id", ondelete="CASCADE"), nullable=False)
-    stripe_plan_id = Column(Integer, ForeignKey(
-        "stripe_plans.id", ondelete="CASCADE"), nullable=False)
     # Stripe identifiers
     stripe_subscription_id = Column(String, unique=True, nullable=True)
     stripe_customer_id = Column(String, nullable=True)
@@ -410,7 +408,6 @@ class Subscription(Base):
 
     # Relationships
     user = relationship("User", back_populates="subscriptions")
-    stripe_plan = relationship("StripePlan", back_populates="subscriptions")
 
     @staticmethod
     def get_sub_by_subscription_id(db: Session, stripe_sub_id: int):

@@ -45,7 +45,6 @@ user2 = User(
 
 sub1 = Subscription(
     user=user1,
-    stripe_plan="basic_plan",
     status="active",
     start_date=datetime(2025, 1, 1),
     end_date=None,
@@ -53,7 +52,6 @@ sub1 = Subscription(
 
 sub2 = Subscription(
     user=user2,
-    stripe_plan="plan_premium",
     status="canceled",
     start_date=datetime(2025, 1, 1),
     end_date=datetime(2025, 6, 1),

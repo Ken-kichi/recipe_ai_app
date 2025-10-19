@@ -1,7 +1,7 @@
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from src.db_models import User, Image, Recipe, StripePlan
+from src.db_models import User, Image, Recipe
 from src.get_conn import get_db
 from src.utils import verify_access_token
 from src.api_models import RecipeResponse, RecipeRead, EditedRecipe
@@ -82,23 +82,6 @@ async def get_user_recipes(
         if user.disabled:
             raise HTTPException(
                 status_code=403, detail="User account is disabled")
-
-        # If user has no active subscription, provide checkout URL
-        active_sub = user.current_subscription()
-        if not active_sub:
-            plan = db.query(StripePlan).first()
-            if not plan:
-                raise HTTPException(
-                    status_code=500, detail="No subscription plans configured")
-
-            session_info = create_checkout_session(
-                plan_id=plan.id, user_email=user.email, db=db)
-            # Return 402 to indicate payment required with checkout URL
-            raise HTTPException(status_code=402, detail={
-                "message": "Subscription required",
-                "checkout_url": session_info.get("checkout_url"),
-                "checkout_session_id": session_info.get("checkout_session_id")
-            })
 
         recipes = Recipe.get_recipes_by_user(user_id=user.id, db=db)
 

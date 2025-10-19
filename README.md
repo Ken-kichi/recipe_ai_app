@@ -130,6 +130,51 @@ erDiagram
 
 （その他は既存の `.env` を参照）
 
+## Webhook のローカルテスト（stripe CLI）
+
+開発中に Stripe の webhook をローカルで受け取って検証するには `stripe` CLI を使うのが簡単です。以下は推奨手順です。
+
+1. `.env.sample` をコピーして `.env` を作成し、必要な値を埋める（特に `STRIPE_API_KEY` を設定）:
+
+```bash
+cp .env.sample .env
+# エディタで .env を開き STRIPE_API_KEY を設定してください
+```
+
+2. アプリを起動（例: uvicorn）:
+
+```bash
+uvicorn src.main:app --reload --port 8000
+```
+
+3. 別ターミナルで stripe CLI を使って webhook を転送する:
+
+```bash
+stripe listen --forward-to localhost:8000/api/payments/webhook
+```
+
+`stripe listen` を実行すると出力に `Webhook signing secret:` の行が表示されます（例: `whsec_...`）。その値をコピーして `.env` の `STRIPE_WEBHOOK_SECRET` に設定するか、同じターミナルで環境変数をエクスポートしてください。例:
+
+```bash
+# 出力された secret を環境変数に設定（例）
+export STRIPE_WEBHOOK_SECRET=whsec_xxx
+# または .env に追記
+```
+
+4. テストイベントを送る（stripe CLI）:
+
+```bash
+stripe trigger checkout.session.completed
+```
+
+`stripe trigger` は署名付きのテストイベントを送ってくれるので、サーバー側の `stripe.Webhook.construct_event` による検証が通るはずです。もし署名検証でエラーになる場合は、`stripe listen` の出力で得た `whsec_...` を正しく設定しているか、受け取り先 URL が `localhost:8000/api/payments/webhook` と一致しているかを確認してください。
+
+開発上の注意点:
+
+- 本番では必ず `STRIPE_WEBHOOK_SECRET` を設定して署名検証を有効にしてください。
+- Postman 等で直接 POST する場合は `stripe-signature` ヘッダを自分で生成できないため検証に失敗します。開発時は stripe CLI を使って署名付きリクエストを作成してください。
+- ログにリクエスト本体・ヘッダを出したい場合は開発用に限定してログ出力を追加してください（個人情報・カード情報は絶対にログに残さないでください）。
+
 ### ER図（サブスクリプション周りの簡易）
 
 ```mermaid

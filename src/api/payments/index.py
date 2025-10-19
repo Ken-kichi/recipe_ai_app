@@ -4,7 +4,7 @@ import os
 import stripe
 
 from src.get_conn import get_db
-from src.db_models import StripePlan, Subscription, User
+from src.db_models import Subscription, User
 from datetime import datetime
 
 router = APIRouter()
@@ -14,7 +14,7 @@ stripe.api_key = os.getenv("STRIPE_API_KEY")
 
 @router.get("/plans")
 def list_plans(db: Session = Depends(get_db)):
-    plans = StripePlan.get_all_plans(db=db)
+    plans = stripe.Price.list(limit=10)
     return plans
 
 
@@ -60,13 +60,25 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     sig_header = request.headers.get("stripe-signature")
     webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
+    # stripe-signature header must be present for verification
+    if not sig_header:
+        raise HTTPException(
+            status_code=400, detail="Missing stripe-signature header")
+
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, webhook_secret)
-    except stripe.error.SignatureVerificationError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid signature: {e}")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
+        sig_module = getattr(stripe, "error", None) or getattr(
+            stripe, "_error", None)
+        SigExClass = getattr(
+            sig_module, "SignatureVerificationError", None) if sig_module else None
+        if SigExClass and isinstance(e, SigExClass):
+            raise HTTPException(
+                status_code=400, detail=f"Invalid signature: {e}")
+        # Any other error during construct_event -> invalid payload/secret
+        raise HTTPException(
+            status_code=400, detail=f"Invalid payload or webhook configuration: {e}")
 
     evt_type = event["type"]
     data = event["data"]["object"]
