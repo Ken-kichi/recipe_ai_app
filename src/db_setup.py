@@ -9,7 +9,6 @@ from db_models import (
     Recipe,
     Image,
     Subscription,
-    StripePlan,
 )
 
 conn_string = get_connection_uri()
@@ -27,18 +26,6 @@ print("Finished creating tables")
 # create dummy data
 # -------------------------------
 
-plan_basic = StripePlan(
-    stripe_plan_id="plan_basic_001",
-    name="Basic Plan",
-    price=980.0,
-    interval="month"
-)
-plan_premium = StripePlan(
-    stripe_plan_id="plan_premium_001",
-    name="Premium Plan",
-    price=1980.0,
-    interval="month"
-)
 
 user1 = User(
     name="Alice",
@@ -58,7 +45,7 @@ user2 = User(
 
 sub1 = Subscription(
     user=user1,
-    stripe_plan=plan_basic,
+    stripe_plan="basic_plan",
     status="active",
     start_date=datetime(2025, 1, 1),
     end_date=None,
@@ -66,7 +53,7 @@ sub1 = Subscription(
 
 sub2 = Subscription(
     user=user2,
-    stripe_plan=plan_premium,
+    stripe_plan="plan_premium",
     status="canceled",
     start_date=datetime(2025, 1, 1),
     end_date=datetime(2025, 6, 1),
@@ -93,8 +80,6 @@ image1 = Image(
 
 session.add_all(
     [
-        plan_basic,
-        plan_premium,
         user1,
         user2,
         sub1,

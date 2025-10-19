@@ -270,7 +270,6 @@ class Recipe(Base):
             ]
         }
 
-    # レシピ詳細
     @staticmethod
     def get_recipe_by_recipe_id(db: Session, recipe_id: int) -> dict:
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
@@ -296,21 +295,7 @@ class Recipe(Base):
             "recipe_id": recipe.id,
             "title": recipe.title
         }
-
     # レシピ削除
-    @staticmethod
-    def delete_recipe(db: Session, recipe_id: int) -> dict:
-        recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
-        if not recipe:
-            return None
-
-        db.delete(recipe)
-        db.commit()
-        return {
-            "message": "Recipe deleted successfully",
-            "recipe_id": recipe.id,
-            "title": recipe.title
-        }
 
 
 class Image(Base):
@@ -408,53 +393,6 @@ class Image(Base):
         return f"<Image(id={self.id}, url={self.image_url}, regenerated={self.is_regenerated})>"
 
 
-class StripePlan(Base):
-    __tablename__ = "stripe_plans"
-
-    id = Column(Integer, primary_key=True, index=True)
-    stripe_plan_id = Column(String, unique=True, nullable=False)
-    name = Column(String, nullable=False)
-    price = Column(Float, nullable=False)
-    interval = Column(String, nullable=False)
-
-    # Relationships
-    subscriptions = relationship(
-        "Subscription", back_populates="stripe_plan", cascade="all, delete-orphan")
-
-    def display_price(self):
-        """
-            Return the price and billing interval as a string.
-            Example: “$10 / month”
-            """
-        return f"${self.price} / {self.interval}"
-
-    def monthly_price(self):
-        """
-        Return the monthly equivalent price.
-        For annual payments, divide by 12.
-        """
-        if self.interval.lower() == "yearly":
-            return round(self.price / 12, 2)
-        return self.price
-
-    def to_dict(self):
-        """
-        Return in dictionary format for API responses
-        """
-        return {
-            "id": self.id,
-            "stripe_plan_id": self.stripe_plan_id,
-            "name": self.name,
-            "price": self.price,
-            "interval": self.interval,
-            "display_price": self.display_price(),
-            "monthly_price": self.monthly_price(),
-        }
-
-    def __repr__(self):
-        return f"<StripePlan(name={self.name}, price={self.price}, interval={self.interval})>"
-
-
 class Subscription(Base):
     __tablename__ = "subscriptions"
 
@@ -463,6 +401,9 @@ class Subscription(Base):
         "users.id", ondelete="CASCADE"), nullable=False)
     stripe_plan_id = Column(Integer, ForeignKey(
         "stripe_plans.id", ondelete="CASCADE"), nullable=False)
+    # Stripe identifiers
+    stripe_subscription_id = Column(String, unique=True, nullable=True)
+    stripe_customer_id = Column(String, nullable=True)
     status = Column(String, nullable=False)
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime)
@@ -471,42 +412,20 @@ class Subscription(Base):
     user = relationship("User", back_populates="subscriptions")
     stripe_plan = relationship("StripePlan", back_populates="subscriptions")
 
-    def is_active(self):
-        """
-        Check if your current subscription is active
-        """
-        now = datetime.utcnow()
-        if self.status.lower() != "active":
-            return False
-        if self.end_date and now > self.end_date:
-            return False
-        return True
+    @staticmethod
+    def get_sub_by_subscription_id(db: Session, stripe_sub_id: int):
+        sub = db.query(Subscription).filter(
+            Subscription.stripe_subscription_id == stripe_sub_id).first()
+        return sub
 
-    def days_remaining(self):
-        """
-        Return the remaining days of the subscription
-        """
-        if not self.end_date:
-            return None
-        now = datetime.utcnow()
-        remaining = (self.end_date - now).days
-        return max(remaining, 0)
+    @staticmethod
+    def get_sub_by_customer_id(db: Session, stripe_customer_id: int):
+        sub = db.query(Subscription).filter(
+            Subscription.stripe_customer_id == stripe_customer_id).first()
+        return sub
 
-    def to_dict(self):
-        """
-        Return in dictionary format for API responses
-        """
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "stripe_plan_id": self.stripe_plan_id,
-            "plan_name": self.stripe_plan.name if self.stripe_plan else None,
-            "status": self.status,
-            "start_date": self.start_date.isoformat() if self.start_date else None,
-            "end_date": self.end_date.isoformat() if self.end_date else None,
-            "is_active": self.is_active(),
-            "days_remaining": self.days_remaining(),
-        }
-
-    def __repr__(self):
-        return f"<Subscription(user_id={self.user_id}, plan={self.stripe_plan.name if self.stripe_plan else 'Unknown'}, status={self.status})>"
+    @staticmethod
+    def get_subscription_by_stripe_subscription_id(db: Session, stripe_subscription_id: int):
+        sub = db.query(Subscription).filter(
+            Subscription.stripe_subscription_id == stripe_subscription_id).first()
+        return sub
