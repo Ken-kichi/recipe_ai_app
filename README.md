@@ -13,10 +13,9 @@
 ## 主な特徴
 
 * **AIレシピ生成**: 一食分または朝昼晩の3食分を自動生成
-* **調理工程は最大3ステップ**: シンプルな手順で栄養を確保
-* **栄養素チェック**: 1日の推奨栄養素を満たしているか判定
+
 * **レシピ管理機能**: 保存・編集・削除・画像再生成対応
-* **認証 & サブスクリプション**: JWT認証とStripeでの課金連携
+* **認証 & サブスクリプション**: JWT認証（token endpoints 実装）と Stripe での課金連携（Checkout + Webhook の受信）
 * **ユーザー画面**: 一覧画面・詳細画面・ユーザーページを用意
 
 ---
@@ -26,23 +25,22 @@
 * Python (FastAPI)
 → API 実装（認証、レシピ、画像、サブスク）。
 
-* Azure PostgreSQL
-→ レシピ・ユーザー・サブスクリプション情報の永続化。
+* SQLite (開発用)
+→ ローカル開発では `src/app.db`（SQLite）を使用します。プロダクションでの DB は構成により差し替えてください。
 
-* Azure Key Vault
-→ JWTシークレット、Stripe APIキー、DB接続情報の管理。
-
-* Azure Container App + ACR
-→ FastAPIアプリのDockerイメージをACRにpush → Container Appで稼働。
+* Azure OpenAI
+→ レシピ生成に Azure OpenAI クライアントを利用するコードが含まれます。
 
 * Terraform
-→ PostgreSQL、Key Vault、Container App、ACR、ネットワークなどIaCで管理。
+→ インフラを構成するための Terraform 構成がリポジトリに含まれます（オプション）。
 
 * SQLAlchemy
 → ORMでレシピ・ユーザー・サブスクリプションのモデリング。
 
 * Stripe
-→ サブスクリプション課金処理（Webhookも必須）。
+→ サブスクリプション課金処理（Checkout + Webhook）。
+    プランは Stripe 側で管理する運用を想定しており、アプリは Stripe の Price ID（例: `price_1Abc...`）を受け取って Checkout セッションを作成します。
+    Webhook で受信したイベントから Stripe API を使って subscription 情報を取得し、アプリ内の Subscription を更新します。
 
 ---
 
@@ -71,18 +69,13 @@ graph TD
 
 ---
 
-## ER図
+## ER図（簡易）
 
 ```mermaid
 erDiagram
     USER ||--o{ RECIPE : owns
     USER ||--o{ SUBSCRIPTION : has
-    RECIPE ||--o{ STEP : has
-    RECIPE ||--o{ RECIPE_INGREDIENT : contains
-    INGREDIENT ||--o{ RECIPE_INGREDIENT : used_in
     RECIPE ||--o{ IMAGE : has
-    RECIPE ||--o{ NUTRITION : summarizes
-    SUBSCRIPTION }o--|| STRIPE_PLAN : uses
 ```
 
 ---
@@ -90,42 +83,104 @@ erDiagram
 ## 設計上の考慮点
 
 * **工程制限**: 調理手順は最大3ステップ
-* **食事スコープ**: 一食 or 朝昼晩セットを指定可能
 * **生成フロー**: レシピ生成時にMarkdown＋画像を保存、編集で更新可能
 * **画像再生成**: 過去履歴を保持しつつ再生成可能
 * **JWT認証**: DBには `password_hash` を保持し、JWTで認証管理
 * **Stripe連携**: `SUBSCRIPTION` + `STRIPE_PLAN` で課金情報を管理
-* **栄養判定**: AI or ロジックにより1日栄養素を満たすかフラグを設定
+* **Stripe連携**: Checkout（price_id） + Webhook で課金情報を管理
 
 ---
 
 ## API エンドポイント設計
+以下は現在実装されているエンドポイントです（各ルーターは `src/main.py` で以下の prefix にマウントされています：`/api/auth`, `/api/recipe`, `/api/payments`）。
 
-### 認証 (Auth)
+### 認証 (prefix: /api/auth)
 
-* `POST /auth/register` — ユーザー登録
-* `POST /auth/login` — ログイン（JWT発行）
-* `GET /auth/me` — 自分の情報取得
+* `POST /api/auth/token` — OAuth2 token 発行（フォームデータ）
+* `POST /api/auth/create-user` — ユーザー作成（管理用）
+* `POST /api/auth/login` — ログイン（メール・パスワードでトークン生成）
+* `POST /api/auth/logout` — ログアウト（ダミー）
+* `GET /api/auth/user` — 自分のユーザー情報取得
 
-### レシピ (Recipes)
+### レシピ (prefix: /api/recipe)
 
-* `POST /recipes/generate` — AIでレシピ生成（要サブスク）
-* `GET /recipes` — ログインユーザーのレシピ一覧
-* `GET /recipes/{id}` — レシピ詳細取得
-* `PUT /recipes/{id}` — レシピ編集
-* `DELETE /recipes/{id}` — レシピ削除
+* `POST /api/recipe/create-recipe` — AIによるレシピ生成（認可・要トークン）
+* `GET /api/recipe/user-recipes` — ログインユーザーのレシピ一覧（認可・要トークン）
+* `GET /api/recipe/recipe/{recipe_id}` — レシピ詳細取得（認可・要トークン）
+* `PUT /api/recipe/recipe/{recipe_id}` — レシピ編集（認可・要トークン）
+* `DELETE /api/recipe/recipe/{recipe_id}` — レシピ削除（認可・要トークン）
 
-### レシピ画像 (Images)
+### サブスクリプション / 決済 (prefix: /api/payments)
 
-* `POST /recipes/{id}/images/regenerate` — レシピ画像再生成
-* `GET /recipes/{id}/images` — 画像一覧取得
+* `GET /api/payments/plans` — （現状）DB に登録されているプラン一覧を返す（実装ありが未使用の場合あり）
+* `POST /api/payments/create-checkout-session` — Stripe Checkout セッション作成（`price_id` を受け取り Checkout を作成）
+* `POST /api/payments/webhook` — Stripe Webhook 受信（checkout.session.completed, subscription, invoice イベントを処理）
 
-### 栄養素 (Nutrition)
+注: 多くのエンドポイントは認可（JWT Token）を必要とします。Checkout 作成はサーバーで `stripe.Price.retrieve` による価格確認を行い、metadata に `plan_id`（price id）を付与する実装です。
 
-* `GET /recipes/{id}/nutrition` — 栄養素情報取得
+### 環境変数
 
-### サブスクリプション (Stripe)
 
-* `POST /subscriptions/create-checkout-session` — Stripe Checkout セッション作成
-* `POST /subscriptions/webhook` — Stripe Webhook受信
-* `GET /subscriptions/me` — 自分のサブスクリプション情報取得
+最低限設定すべき環境変数:
+
+- `STRIPE_API_KEY` — Stripe シークレットキー（テスト/本番を使い分ける）
+- `STRIPE_WEBHOOK_SECRET` — Stripe Webhook の署名検証用シークレット（本番必須）
+- `STRIPE_SUCCESS_URL` — Checkout 成功時のリダイレクト先
+- `STRIPE_CANCEL_URL` — Checkout キャンセル時のリダイレクト先
+
+（その他は既存の `.env` を参照）
+
+## Webhook のローカルテスト（stripe CLI）
+
+開発中に Stripe の webhook をローカルで受け取って検証するには `stripe` CLI を使うのが簡単です。以下は推奨手順です。
+
+1. `.env.sample` をコピーして `.env` を作成し、必要な値を埋める（特に `STRIPE_API_KEY` を設定）:
+
+```bash
+cp .env.sample .env
+# エディタで .env を開き STRIPE_API_KEY を設定してください
+```
+
+2. アプリを起動（例: uvicorn）:
+
+```bash
+uvicorn src.main:app --reload --port 8000
+```
+
+3. 別ターミナルで stripe CLI を使って webhook を転送する:
+
+```bash
+stripe listen --forward-to localhost:8000/api/payments/webhook
+```
+
+`stripe listen` を実行すると出力に `Webhook signing secret:` の行が表示されます（例: `whsec_...`）。その値をコピーして `.env` の `STRIPE_WEBHOOK_SECRET` に設定するか、同じターミナルで環境変数をエクスポートしてください。例:
+
+```bash
+# 出力された secret を環境変数に設定（例）
+export STRIPE_WEBHOOK_SECRET=whsec_xxx
+# または .env に追記
+```
+
+4. テストイベントを送る（stripe CLI）:
+
+```bash
+stripe trigger checkout.session.completed
+```
+
+`stripe trigger` は署名付きのテストイベントを送ってくれるので、サーバー側の `stripe.Webhook.construct_event` による検証が通るはずです。もし署名検証でエラーになる場合は、`stripe listen` の出力で得た `whsec_...` を正しく設定しているか、受け取り先 URL が `localhost:8000/api/payments/webhook` と一致しているかを確認してください。
+
+開発上の注意点:
+
+- 本番では必ず `STRIPE_WEBHOOK_SECRET` を設定して署名検証を有効にしてください。
+- Postman 等で直接 POST する場合は `stripe-signature` ヘッダを自分で生成できないため検証に失敗します。開発時は stripe CLI を使って署名付きリクエストを作成してください。
+- ログにリクエスト本体・ヘッダを出したい場合は開発用に限定してログ出力を追加してください（個人情報・カード情報は絶対にログに残さないでください）。
+
+### ER図（サブスクリプション周りの簡易）
+
+```mermaid
+erDiagram
+    USER ||--o{ RECIPE : owns
+    USER ||--o{ SUBSCRIPTION : has
+    RECIPE ||--o{ IMAGE : has
+    SUBSCRIPTION }o--|| STRIPE_SUBSCRIPTION : uses
+```

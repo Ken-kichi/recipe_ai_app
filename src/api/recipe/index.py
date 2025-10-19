@@ -5,6 +5,7 @@ from src.db_models import User, Image, Recipe
 from src.get_conn import get_db
 from src.utils import verify_access_token
 from src.api_models import RecipeResponse, RecipeRead, EditedRecipe
+from src.api.payments.index import create_checkout_session
 
 router = APIRouter()
 app = FastAPI()
